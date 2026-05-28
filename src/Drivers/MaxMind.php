@@ -9,6 +9,7 @@ use GeoIp2\Model\Country;
 use GeoIp2\WebService\Client;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Fluent;
@@ -237,22 +238,35 @@ class MaxMind extends Driver implements Updatable
             return $cachePath;
         }
 
-        $disk = Storage::disk($this->getDatabaseDisk());
-        $diskPath = $this->getDatabaseDiskPath();
+        $lock = Cache::lock('location-maxmind-database-cache-'.$this->getDatabaseDisk(), 30);
 
-        if (! $disk->exists($diskPath)) {
-            throw new Exception(sprintf('MaxMind database file not found on disk [%s] at path [%s].', $this->getDatabaseDisk(), $diskPath));
+        $lock->block(30);
+
+        try {
+            // Re-check after acquiring the lock in case another process populated the cache while we waited.
+            if (is_readable($cachePath)) {
+                return $cachePath;
+            }
+
+            $disk = Storage::disk($this->getDatabaseDisk());
+            $diskPath = $this->getDatabaseDiskPath();
+
+            if (! $disk->exists($diskPath)) {
+                throw new Exception(sprintf('MaxMind database file not found on disk [%s] at path [%s].', $this->getDatabaseDisk(), $diskPath));
+            }
+
+            $stream = $disk->readStream($diskPath);
+
+            if (! $stream) {
+                throw new Exception(sprintf('Unable to read MaxMind database file from disk [%s] at path [%s].', $this->getDatabaseDisk(), $diskPath));
+            }
+
+            $this->writeStreamToPath($stream, $cachePath);
+
+            fclose($stream);
+        } finally {
+            $lock->release();
         }
-
-        $stream = $disk->readStream($diskPath);
-
-        if (! $stream) {
-            throw new Exception(sprintf('Unable to read MaxMind database file from disk [%s] at path [%s].', $this->getDatabaseDisk(), $diskPath));
-        }
-
-        $this->writeStreamToPath($stream, $cachePath);
-
-        fclose($stream);
 
         return $cachePath;
     }
@@ -268,11 +282,13 @@ class MaxMind extends Driver implements Updatable
 
         $filename = pathinfo($this->getDatabaseDiskPath(), PATHINFO_FILENAME) ?: 'GeoLite2-City';
 
-        return storage_path(sprintf(
-            'location/maxmind/cache/%s-%s.mmdb',
-            $filename,
-            md5($this->getDatabaseDisk().'|'.$this->getDatabaseDiskPath())
-        ));
+        return storage_path(
+            sprintf(
+                'location/maxmind/cache/%s-%s.mmdb',
+                $filename,
+                md5($this->getDatabaseDisk().'|'.$this->getDatabaseDiskPath())
+            )
+        );
     }
 
     /**
