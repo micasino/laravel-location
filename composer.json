@@ -1,10 +1,14 @@
 {
-    "name": "stevebauman/location",
+    "name": "micasino/laravel-location",
     "description": "Retrieve a user's location by their IP Address",
     "authors": [
         {
             "name": "Steve Bauman",
             "email": "steven_bauman@outlook.com"
+        },
+        {
+            "name": "Marc González",
+            "email": "marcn@micasino.com"
         }
     ],
     "license": "MIT",
