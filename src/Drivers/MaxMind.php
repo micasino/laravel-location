@@ -95,7 +95,11 @@ class MaxMind extends Driver implements Updatable
             return;
         }
 
-        file_put_contents($this->getDatabasePath(), $stream);
+        $databasePath = $this->getDatabasePath();
+
+        @mkdir(dirname($databasePath), recursive: true);
+
+        file_put_contents($databasePath, $stream);
 
         fclose($stream);
     }
