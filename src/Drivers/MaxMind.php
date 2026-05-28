@@ -64,7 +64,7 @@ class MaxMind extends Driver implements Updatable
     protected function newTemporaryStorage(): FilesystemAdapter
     {
         @mkdir(
-            $root = storage_path('app/location/maxmind-update'),
+            $root = storage_path('location/maxmind/update'),
             recursive: true
         );
 
@@ -269,7 +269,7 @@ class MaxMind extends Driver implements Updatable
         $filename = pathinfo($this->getDatabaseDiskPath(), PATHINFO_FILENAME) ?: 'GeoLite2-City';
 
         return storage_path(sprintf(
-            'app/location/maxmind-cache/%s-%s.mmdb',
+            'location/maxmind/cache/%s-%s.mmdb',
             $filename,
             md5($this->getDatabaseDisk().'|'.$this->getDatabaseDiskPath())
         ));

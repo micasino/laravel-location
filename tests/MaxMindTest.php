@@ -41,6 +41,13 @@ it('can update database on configured filesystem disk', function () {
     $this->artisan(Update::class)->assertSuccessful();
 
     expect(Storage::disk('local')->exists('maxmind/GeoLite2-City.mmdb'))->toBeTrue();
+
+    $cachePath = storage_path(sprintf(
+        'location/maxmind/cache/GeoLite2-City-%s.mmdb',
+        md5('local|maxmind/GeoLite2-City.mmdb')
+    ));
+
+    expect($cachePath)->toBeFile();
 });
 
 it('can process fluent response', function () {
@@ -131,6 +138,13 @@ it('can reuse cached local database when using configured filesystem disk', func
     );
 
     $first = Location::get('2.125.160.216');
+
+    $cachePath = storage_path(sprintf(
+        'location/maxmind/cache/GeoLite2-City-Test-%s.mmdb',
+        md5('local|maxmind/GeoLite2-City-Test.mmdb')
+    ));
+
+    expect($cachePath)->toBeFile();
 
     Storage::disk('local')->delete('maxmind/GeoLite2-City-Test.mmdb');
 
