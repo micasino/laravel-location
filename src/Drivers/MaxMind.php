@@ -65,7 +65,7 @@ class MaxMind extends Driver implements Updatable
     protected function newTemporaryStorage(): FilesystemAdapter
     {
         @mkdir(
-            $root = storage_path('location/maxmind/update'),
+            $root = storage_path('app/location/maxmind/update'),
             recursive: true
         );
 
@@ -284,7 +284,7 @@ class MaxMind extends Driver implements Updatable
 
         return storage_path(
             sprintf(
-                'location/maxmind/cache/%s-%s.mmdb',
+                'app/location/maxmind/cache/%s-%s.mmdb',
                 $filename,
                 md5($this->getDatabaseDisk().'|'.$this->getDatabaseDiskPath())
             )
