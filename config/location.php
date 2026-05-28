@@ -135,11 +135,14 @@ return [
 
         'local' => [
             'type' => 'city',
-            'path' => env('MAXMIND_DATABASE_PATH', database_path('maxmind/GeoLite2-City.mmdb')),
+            'path' => env('MAXMIND_DATABASE_PATH', storage_path('location/maxmind/GeoLite2-City.mmdb')),
             // The filesystem disk to store the database file on at the configured path.
             // When null, the local disk will be used by default.
             'disk' => env('MAXMIND_DATABASE_DISK'),
-            'url' => sprintf('https://download.maxmind.com/app/geoip_download_by_token?edition_id=GeoLite2-City&license_key=%s&suffix=tar.gz', env('MAXMIND_LICENSE_KEY')),
+            'url' => sprintf(
+                'https://download.maxmind.com/app/geoip_download_by_token?edition_id=GeoLite2-City&license_key=%s&suffix=tar.gz',
+                env('MAXMIND_LICENSE_KEY')
+            ),
         ],
     ],
 

@@ -9,6 +9,7 @@ use GeoIp2\Model\Country;
 use GeoIp2\WebService\Client;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Fluent;
@@ -64,7 +65,7 @@ class MaxMind extends Driver implements Updatable
     protected function newTemporaryStorage(): FilesystemAdapter
     {
         @mkdir(
-            $root = storage_path('app/location/maxmind-update'),
+            $root = storage_path('location/maxmind/update'),
             recursive: true
         );
 
@@ -90,18 +91,49 @@ class MaxMind extends Driver implements Updatable
             Storage::disk($this->getDatabaseDisk())
                 ->put($this->getDatabaseDiskPath(), $stream);
 
+            rewind($stream);
+
+            $this->writeStreamToPath($stream, $this->getDatabaseCachePath());
+
             fclose($stream);
 
             return;
         }
 
-        $databasePath = $this->getDatabasePath();
-
-        @mkdir(dirname($databasePath), recursive: true);
-
-        file_put_contents($databasePath, $stream);
+        $this->writeStreamToPath($stream, $this->getDatabasePath());
 
         fclose($stream);
+    }
+
+    /**
+     * Write stream contents to a local file path.
+     */
+    protected function writeStreamToPath($stream, string $path): void
+    {
+        $directory = dirname($path);
+
+        @mkdir($directory, recursive: true);
+
+        $temporaryPath = tempnam($directory, 'maxmind_');
+
+        throw_if(
+            $temporaryPath === false,
+            new RuntimeException(sprintf('Unable to create temporary file for MaxMind database path [%s].', $path))
+        );
+
+        $temporaryStream = fopen($temporaryPath, 'w+b');
+
+        throw_if(
+            ! $temporaryStream,
+            new RuntimeException(sprintf('Unable to write temporary MaxMind database file [%s].', $temporaryPath))
+        );
+
+        stream_copy_to_stream($stream, $temporaryStream);
+
+        fflush($temporaryStream);
+        fclose($temporaryStream);
+
+        rename($temporaryPath, $path);
     }
 
     /**
@@ -179,13 +211,84 @@ class MaxMind extends Driver implements Updatable
     {
         $maxmind = $this->isWebServiceEnabled()
             ? $this->newClient($this->getUserId(), $this->getLicenseKey(), $this->getLocales(), $this->getOptions())
-            : $this->newReader($this->getDatabasePath());
+            : $this->newReader($this->getDatabaseFilePathForReader());
 
         if ($this->isWebServiceEnabled() || $this->getLocationType() === 'city') {
             return $maxmind->city($ip);
         }
 
         return $maxmind->country($ip);
+    }
+
+    /**
+     * Get the database file path for the MaxMind reader.
+     * If using a custom disk, mirrors the file to a persistent local cache once and reuses it.
+     *
+     * @throws Exception
+     */
+    protected function getDatabaseFilePathForReader(): string
+    {
+        if (! $this->getDatabaseDisk()) {
+            return $this->getDatabasePath();
+        }
+
+        $cachePath = $this->getDatabaseCachePath();
+
+        if (is_readable($cachePath)) {
+            return $cachePath;
+        }
+
+        $lock = Cache::lock('location-maxmind-database-cache-'.$this->getDatabaseDisk(), 30);
+
+        $lock->block(30);
+
+        try {
+            // Re-check after acquiring the lock in case another process populated the cache while we waited.
+            if (is_readable($cachePath)) {
+                return $cachePath;
+            }
+
+            $disk = Storage::disk($this->getDatabaseDisk());
+            $diskPath = $this->getDatabaseDiskPath();
+
+            if (! $disk->exists($diskPath)) {
+                throw new Exception(sprintf('MaxMind database file not found on disk [%s] at path [%s].', $this->getDatabaseDisk(), $diskPath));
+            }
+
+            $stream = $disk->readStream($diskPath);
+
+            if (! $stream) {
+                throw new Exception(sprintf('Unable to read MaxMind database file from disk [%s] at path [%s].', $this->getDatabaseDisk(), $diskPath));
+            }
+
+            $this->writeStreamToPath($stream, $cachePath);
+
+            fclose($stream);
+        } finally {
+            $lock->release();
+        }
+
+        return $cachePath;
+    }
+
+    /**
+     * Get the persistent local cache path for databases stored on custom disks.
+     */
+    protected function getDatabaseCachePath(): string
+    {
+        if (! $this->getDatabaseDisk()) {
+            return $this->getDatabasePath();
+        }
+
+        $filename = pathinfo($this->getDatabaseDiskPath(), PATHINFO_FILENAME) ?: 'GeoLite2-City';
+
+        return storage_path(
+            sprintf(
+                'location/maxmind/cache/%s-%s.mmdb',
+                $filename,
+                md5($this->getDatabaseDisk().'|'.$this->getDatabaseDiskPath())
+            )
+        );
     }
 
     /**
