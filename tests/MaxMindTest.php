@@ -118,6 +118,30 @@ it('can use city database', function () {
     ]);
 });
 
+it('can reuse cached local database when using configured filesystem disk', function () {
+    config(['location.testing.enabled' => false]);
+    config(['location.driver' => MaxMind::class]);
+    config(['location.maxmind.local.type' => 'city']);
+    config(['location.maxmind.local.disk' => 'local']);
+    config(['location.maxmind.local.path' => 'maxmind/GeoLite2-City-Test.mmdb']);
+
+    Storage::disk('local')->put(
+        'maxmind/GeoLite2-City-Test.mmdb',
+        file_get_contents(__DIR__.'/fixtures/GeoLite2-City-Test.mmdb')
+    );
+
+    $first = Location::get('2.125.160.216');
+
+    Storage::disk('local')->delete('maxmind/GeoLite2-City-Test.mmdb');
+
+    $second = Location::get('2.125.160.216');
+
+    expect($first)->toBeInstanceOf(Position::class);
+    expect($second)->toBeInstanceOf(Position::class);
+    expect($second->countryCode)->toBe('GB');
+    expect($second->cityName)->toBe('Boxford');
+});
+
 it('can use country database', function () {
     config(['location.testing.enabled' => false]);
     config(['location.driver' => MaxMind::class]);
