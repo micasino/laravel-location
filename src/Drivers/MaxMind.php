@@ -7,6 +7,7 @@ use GeoIp2\Database\Reader;
 use GeoIp2\Model\City;
 use GeoIp2\Model\Country;
 use GeoIp2\WebService\Client;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
@@ -26,14 +27,7 @@ class MaxMind extends Driver implements Updatable
      */
     public function update(Command $command): void
     {
-        @mkdir(
-            $root = Str::of($this->getDatabasePath())->dirname()
-        );
-
-        $storage = Storage::build([
-            'driver' => 'local',
-            'root' => $root,
-        ]);
+        $storage = $this->newTemporaryStorage();
 
         $tarFilePath = $storage->path(
             $tarFileName = 'maxmind.tar.gz'
@@ -58,13 +52,52 @@ class MaxMind extends Driver implements Updatable
 
         $archive->extractTo($storage->path('/'), $relativePath, true);
 
-        file_put_contents(
-            $this->getDatabasePath(),
-            fopen($storage->path($relativePath), 'r')
-        );
+        $this->putDatabaseContentsFromFile($storage->path($relativePath));
 
         $storage->delete($tarFileName);
         $storage->deleteDirectory($directory);
+    }
+
+    /**
+     * Create a temporary local filesystem instance for database updates.
+     */
+    protected function newTemporaryStorage(): FilesystemAdapter
+    {
+        @mkdir(
+            $root = storage_path('app/location/maxmind-update'),
+            recursive: true
+        );
+
+        return Storage::build([
+            'driver' => 'local',
+            'root' => $root,
+        ]);
+    }
+
+    /**
+     * Write the database file contents to the configured destination.
+     */
+    protected function putDatabaseContentsFromFile(string $path): void
+    {
+        $stream = fopen($path, 'r');
+
+        throw_if(
+            ! $stream,
+            new RuntimeException('Unable to read extracted MaxMind database file.')
+        );
+
+        if ($this->getDatabaseDisk()) {
+            Storage::disk($this->getDatabaseDisk())
+                ->put($this->getDatabaseDiskPath(), $stream);
+
+            fclose($stream);
+
+            return;
+        }
+
+        file_put_contents($this->getDatabasePath(), $stream);
+
+        fclose($stream);
     }
 
     /**
@@ -213,6 +246,22 @@ class MaxMind extends Driver implements Updatable
     protected function getDatabasePath(): string
     {
         return config('location.maxmind.local.path', database_path('maxmind/GeoLite2-City.mmdb'));
+    }
+
+    /**
+     * Get the MaxMind database filesystem disk.
+     */
+    protected function getDatabaseDisk(): ?string
+    {
+        return config('location.maxmind.local.disk');
+    }
+
+    /**
+     * Get the MaxMind database filesystem path for the configured disk.
+     */
+    protected function getDatabaseDiskPath(): string
+    {
+        return ltrim($this->getDatabasePath(), '/');
     }
 
     /**
