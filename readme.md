@@ -85,7 +85,7 @@ Location::fake([
 $position = Location::get('127.0.0.1'); // Position
 ```
 
-If you prefer, you may use an asterisk to return the same position for any IP address that is given: 
+If you prefer, you may use an asterisk to return the same position for any IP address that is given:
 
 ```php
 Location::fake([
@@ -160,7 +160,7 @@ Available drivers:
 
 #### Setting up MaxMind with a self-hosted database (optional)
 
-It is encouraged to set up MaxMind as a fallback driver using a local database 
+It is encouraged to set up MaxMind as a fallback driver using a local database
 so that some location information is returned in the event of hitting
 a rate limit from the external web services.
 
@@ -170,10 +170,11 @@ To set up MaxMind to retrieve the user's location from your own server, you must
 2. Click "Manage License Keys" from the profile menu dropdown
 3. Generate a new license key
 4. Copy the license key and save it into your `.env` file using the `MAXMIND_LICENSE_KEY` key
-5. Run `php artisan location:update` to download the latest `.mmdb` file into your `database/maxmind` directory
-6. That's it, you're all set!
+5. (Optional) Set `MAXMIND_DATABASE_DISK` to store the `.mmdb` file on a configured Laravel filesystem disk
+6. Run `php artisan location:update` to download the latest `.mmdb` file
+7. That's it, you're all set!
 
-> **Note**: Keep in mind, you'll need to update this file by running `location:update` 
+> **Note**: Keep in mind, you'll need to update this file by running `location:update`
 > on a regular basis to retrieve the most current information from your visitors.
 
 ### Fallback Drivers
@@ -200,11 +201,11 @@ use Stevebauman\Location\Request;
 use Stevebauman\Location\Drivers\Driver;
 
 class MyDriver extends Driver
-{    
+{
     protected function process(Request $request): Fluent
     {
          $response = Http::get("https://driver-url.com", ['ip' => $request->getIp()]);
-         
+
          return new Fluent($response->json());
     }
 
@@ -227,18 +228,18 @@ Then, insert your driver class name into the configuration file:
 
 ## Upgrading from v6
 
-In version 7, the codebase has been updated with strict PHP types, 
-updated PHP and Laravel version requirements, an updated `Driver` 
+In version 7, the codebase has been updated with strict PHP types,
+updated PHP and Laravel version requirements, an updated `Driver`
 structure, as well as a small configuration addition.
 
 ### Configuration
 
-In version 7, location drivers can now implement an `Updatable` interface 
-that allows them to be updated using the `location:update` command. 
+In version 7, location drivers can now implement an `Updatable` interface
+that allows them to be updated using the `location:update` command.
 Currently, only the MaxMind driver supports this.
 
 To update your configuration file to be able to download the latest
-MaxMind database file automatically, insert the below `url` 
+MaxMind database file automatically, insert the below `url`
 configuration option in your `config/location.php` file:
 
 ```diff
@@ -247,10 +248,12 @@ configuration option in your `config/location.php` file:
 return [
     'maxmind' => [
         // ...
-        
+
         'local' => [
             // ...
-            
+
++            'disk' => env('MAXMIND_DATABASE_DISK'),
+
 +            'url' => sprintf('https://download.maxmind.com/app/geoip_download_by_token?edition_id=GeoLite2-City&license_key=%s&suffix=tar.gz', env('MAXMIND_LICENSE_KEY')),
         ],
     ],
@@ -265,15 +268,15 @@ php artisan location:update
 
 ### Drivers
 
-In version 7, the codebase has been updated with strict PHP 
-types, updated PHP and Laravel version requirements, 
+In version 7, the codebase has been updated with strict PHP
+types, updated PHP and Laravel version requirements,
 and an updated `Driver` structure.
 
-If you have created your own custom driver implementation, 
+If you have created your own custom driver implementation,
 you must update it to use the base `Driver` or `HttpDriver` class.
 
 If you're fetching a location using an HTTP service, it
-may be useful to extend the `HttpDriver` to reduce 
+may be useful to extend the `HttpDriver` to reduce
 the code you need to write:
 
 ```diff
@@ -292,12 +295,12 @@ use Stevebauman\Location\Position;
     {
         return "http://driver-url.com?ip=$ip";
     }
-    
+
 -    protected function process($ip)
 -    {
 -        return rescue(function () use ($ip) {
 -            $response = json_decode(file_get_contents($this->url($ip)), true);
--            
+-
 -            return new Fluent($response);
 -        }, $rescue = false);
 -    }
