@@ -1,32 +1,33 @@
 <?php
 
-namespace Stevebauman\Location\Tests;
+namespace Stevebauman\Location\Tests\Drivers;
 
 use Illuminate\Support\Fluent;
 use Mockery as m;
-use Stevebauman\Location\Drivers\IpApi;
+use Stevebauman\Location\Drivers\IpData;
 use Stevebauman\Location\Facades\Location;
 use Stevebauman\Location\Position;
 
 it('it can process fluent response', function () {
-    $driver = m::mock(IpApi::class)->makePartial();
+    $driver = m::mock(IpData::class);
 
-    $response = new Fluent([
-        'country' => 'United States',
-        'countryCode' => 'US',
-        'region' => 'CA',
-        'regionName' => 'California',
+    $attributes = [
+        'country_name' => 'United States',
+        'country_code' => 'US',
+        'region_code' => 'CA',
+        'region' => 'California',
         'city' => 'Long Beach',
-        'zip' => '55555',
-        'lat' => '50',
-        'lon' => '50',
-        'currency' => 'USD',
-        'timezone' => 'America/Toronto',
-    ]);
+        'postal' => '55555',
+        'latitude' => '50',
+        'longitude' => '50',
+        'currency' => ['code' => 'USD'],
+        'time_zone' => ['name' => 'America/Toronto'],
+    ];
 
     $driver
+        ->makePartial()
         ->shouldAllowMockingProtectedMethods()
-        ->shouldReceive('process')->once()->andReturn($response);
+        ->shouldReceive('process')->once()->andReturn(new Fluent($attributes));
 
     Location::setDriver($driver);
 
@@ -42,7 +43,7 @@ it('it can process fluent response', function () {
         'cityName' => 'Long Beach',
         'zipCode' => '55555',
         'isoCode' => null,
-        'postalCode' => null,
+        'postalCode' => '55555',
         'latitude' => '50',
         'longitude' => '50',
         'metroCode' => null,

@@ -1,24 +1,26 @@
 <?php
 
-namespace Stevebauman\Location\Tests;
+namespace Stevebauman\Location\Tests\Drivers;
 
 use Illuminate\Support\Fluent;
 use Mockery as m;
-use Stevebauman\Location\Drivers\IpInfoLite;
+use Stevebauman\Location\Drivers\GeoPlugin;
 use Stevebauman\Location\Facades\Location;
 use Stevebauman\Location\Position;
 
 it('it can process fluent response', function () {
-    $driver = m::mock(IpInfoLite::class)->makePartial();
+    $driver = m::mock(GeoPlugin::class)->makePartial();
 
     $attributes = [
-        'asn' => 'AS15169',
-        'as_name' => 'Google LLC',
-        'as_domain' => 'google.com',
-        'country' => 'United States',
-        'country_code' => 'US',
-        'continent_code' => 'NA',
-        'continent' => 'North America',
+        'geoplugin_countryCode' => 'US',
+        'geoplugin_countryName' => 'United States',
+        'geoplugin_regionName' => 'California',
+        'geoplugin_regionCode' => 'CA',
+        'geoplugin_city' => 'Long Beach',
+        'geoplugin_latitude' => '50',
+        'geoplugin_longitude' => '50',
+        'geoplugin_areaCode' => '555',
+        'geoplugin_timezone' => 'America/Toronto',
     ];
 
     $driver
@@ -35,18 +37,18 @@ it('it can process fluent response', function () {
         'countryName' => 'United States',
         'currencyCode' => null,
         'countryCode' => 'US',
-        'regionCode' => null,
-        'regionName' => null,
-        'cityName' => null,
+        'regionCode' => 'CA',
+        'regionName' => 'California',
+        'cityName' => 'Long Beach',
         'zipCode' => null,
         'isoCode' => null,
         'postalCode' => null,
-        'latitude' => null,
-        'longitude' => null,
+        'latitude' => '50',
+        'longitude' => '50',
         'metroCode' => null,
-        'areaCode' => null,
+        'areaCode' => '555',
         'ip' => '66.102.0.0',
-        'timezone' => null,
+        'timezone' => 'America/Toronto',
         'driver' => get_class($driver),
         'cached' => false,
     ]);

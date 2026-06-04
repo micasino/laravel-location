@@ -1,26 +1,23 @@
 <?php
 
-namespace Stevebauman\Location\Tests;
+namespace Stevebauman\Location\Tests\Drivers;
 
 use Illuminate\Support\Fluent;
 use Mockery as m;
-use Stevebauman\Location\Drivers\GeoPlugin;
+use Stevebauman\Location\Drivers\IpInfo;
 use Stevebauman\Location\Facades\Location;
 use Stevebauman\Location\Position;
 
 it('it can process fluent response', function () {
-    $driver = m::mock(GeoPlugin::class)->makePartial();
+    $driver = m::mock(IpInfo::class)->makePartial();
 
     $attributes = [
-        'geoplugin_countryCode' => 'US',
-        'geoplugin_countryName' => 'United States',
-        'geoplugin_regionName' => 'California',
-        'geoplugin_regionCode' => 'CA',
-        'geoplugin_city' => 'Long Beach',
-        'geoplugin_latitude' => '50',
-        'geoplugin_longitude' => '50',
-        'geoplugin_areaCode' => '555',
-        'geoplugin_timezone' => 'America/Toronto',
+        'country' => 'US',
+        'region' => 'California',
+        'city' => 'Long Beach',
+        'postal' => 'M5A',
+        'loc' => '50,50',
+        'timezone' => 'America/Toronto',
     ];
 
     $driver
@@ -34,19 +31,19 @@ it('it can process fluent response', function () {
     expect($position)->toBeInstanceOf(Position::class);
 
     expect($position->toArray())->toEqual([
-        'countryName' => 'United States',
+        'countryName' => null,
         'currencyCode' => null,
         'countryCode' => 'US',
-        'regionCode' => 'CA',
+        'regionCode' => null,
         'regionName' => 'California',
         'cityName' => 'Long Beach',
         'zipCode' => null,
         'isoCode' => null,
-        'postalCode' => null,
+        'postalCode' => 'M5A',
         'latitude' => '50',
         'longitude' => '50',
         'metroCode' => null,
-        'areaCode' => '555',
+        'areaCode' => null,
         'ip' => '66.102.0.0',
         'timezone' => 'America/Toronto',
         'driver' => get_class($driver),

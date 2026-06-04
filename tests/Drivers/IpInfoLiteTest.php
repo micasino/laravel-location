@@ -1,23 +1,24 @@
 <?php
 
-namespace Stevebauman\Location\Tests;
+namespace Stevebauman\Location\Tests\Drivers;
 
 use Illuminate\Support\Fluent;
 use Mockery as m;
-use Stevebauman\Location\Drivers\IpInfo;
+use Stevebauman\Location\Drivers\IpInfoLite;
 use Stevebauman\Location\Facades\Location;
 use Stevebauman\Location\Position;
 
 it('it can process fluent response', function () {
-    $driver = m::mock(IpInfo::class)->makePartial();
+    $driver = m::mock(IpInfoLite::class)->makePartial();
 
     $attributes = [
-        'country' => 'US',
-        'region' => 'California',
-        'city' => 'Long Beach',
-        'postal' => 'M5A',
-        'loc' => '50,50',
-        'timezone' => 'America/Toronto',
+        'asn' => 'AS15169',
+        'as_name' => 'Google LLC',
+        'as_domain' => 'google.com',
+        'country' => 'United States',
+        'country_code' => 'US',
+        'continent_code' => 'NA',
+        'continent' => 'North America',
     ];
 
     $driver
@@ -31,21 +32,21 @@ it('it can process fluent response', function () {
     expect($position)->toBeInstanceOf(Position::class);
 
     expect($position->toArray())->toEqual([
-        'countryName' => null,
+        'countryName' => 'United States',
         'currencyCode' => null,
         'countryCode' => 'US',
         'regionCode' => null,
-        'regionName' => 'California',
-        'cityName' => 'Long Beach',
+        'regionName' => null,
+        'cityName' => null,
         'zipCode' => null,
         'isoCode' => null,
-        'postalCode' => 'M5A',
-        'latitude' => '50',
-        'longitude' => '50',
+        'postalCode' => null,
+        'latitude' => null,
+        'longitude' => null,
         'metroCode' => null,
         'areaCode' => null,
         'ip' => '66.102.0.0',
-        'timezone' => 'America/Toronto',
+        'timezone' => null,
         'driver' => get_class($driver),
         'cached' => false,
     ]);
