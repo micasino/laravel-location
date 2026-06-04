@@ -1,5 +1,5 @@
 {
-    "name": "stevebauman/location",
+    "name": "micasino/laravel-location",
     "description": "Retrieve a user's location by their IP Address",
     "authors": [
         {
