@@ -80,29 +80,58 @@ class MaxMind extends Driver implements Updatable
      */
     protected function putDatabaseContentsFromFile(string $path): void
     {
-        $stream = fopen($path, 'r');
-
-        throw_if(
-            ! $stream,
-            new RuntimeException('Unable to read extracted MaxMind database file.')
-        );
-
         if ($this->getDatabaseDisk()) {
-            Storage::disk($this->getDatabaseDisk())
-                ->put($this->getDatabaseDiskPath(), $stream);
+            $diskStream = $this->openReadStream($path, 'write to configured disk');
 
-            rewind($stream);
+            $stored = Storage::disk($this->getDatabaseDisk())
+                ->put($this->getDatabaseDiskPath(), $diskStream);
 
-            $this->writeStreamToPath($stream, $this->getDatabaseCachePath());
+            if (is_resource($diskStream)) {
+                fclose($diskStream);
+            }
 
-            fclose($stream);
+            throw_if(
+                $stored === false,
+                new RuntimeException(sprintf(
+                    'Unable to write MaxMind database file to disk [%s] at path [%s].',
+                    $this->getDatabaseDisk(),
+                    $this->getDatabaseDiskPath()
+                ))
+            );
+
+            $cacheStream = $this->openReadStream($path, 'write to local cache');
+
+            $this->writeStreamToPath($cacheStream, $this->getDatabaseCachePath());
+
+            if (is_resource($cacheStream)) {
+                fclose($cacheStream);
+            }
 
             return;
         }
 
+        $stream = $this->openReadStream($path, 'write to local path');
+
         $this->writeStreamToPath($stream, $this->getDatabasePath());
 
-        fclose($stream);
+        if (is_resource($stream)) {
+            fclose($stream);
+        }
+    }
+
+    /**
+     * Open a readable stream from a local file path.
+     */
+    protected function openReadStream(string $path, string $operation)
+    {
+        $stream = fopen($path, 'r');
+
+        throw_if(
+            ! $stream,
+            new RuntimeException(sprintf('Unable to open MaxMind database file [%s] for %s.', $path, $operation))
+        );
+
+        return $stream;
     }
 
     /**
@@ -263,7 +292,9 @@ class MaxMind extends Driver implements Updatable
 
             $this->writeStreamToPath($stream, $cachePath);
 
-            fclose($stream);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
         } finally {
             $lock->release();
         }

@@ -50,6 +50,60 @@ it('can update database on configured filesystem disk', function () {
     expect($cachePath)->toBeFile();
 });
 
+it('can cache database when disk upload closes the source stream', function () {
+    config([
+        'location.maxmind.local.disk' => 's3',
+    ]);
+
+    $driver = new class extends MaxMind
+    {
+        public function storeDatabaseFile(string $path): void
+        {
+            $this->putDatabaseContentsFromFile($path);
+        }
+
+        protected function getDatabasePath(): string
+        {
+            return 'maxmind/GeoLite2-City.mmdb';
+        }
+    };
+
+    $tmpPath = tempnam(sys_get_temp_dir(), 'maxmind_test_');
+
+    file_put_contents($tmpPath, 'test-mmdb-content');
+
+    $disk = m::mock();
+
+    $disk->shouldReceive('put')
+        ->once()
+        ->with('maxmind/GeoLite2-City.mmdb', m::on(function ($stream) {
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+
+            return true;
+        }))
+        ->andReturn(true);
+
+    Storage::shouldReceive('disk')
+        ->once()
+        ->with('s3')
+        ->andReturn($disk);
+
+    $driver->storeDatabaseFile($tmpPath);
+
+    $cachePath = storage_path(sprintf(
+        'app/location/maxmind/cache/GeoLite2-City-%s.mmdb',
+        md5('s3|maxmind/GeoLite2-City.mmdb')
+    ));
+
+    expect($cachePath)->toBeFile();
+    expect(file_get_contents($cachePath))->toBe('test-mmdb-content');
+
+    @unlink($tmpPath);
+    @unlink($cachePath);
+});
+
 it('can process fluent response', function () {
     $driver = m::mock(MaxMind::class);
 
