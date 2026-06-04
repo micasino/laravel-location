@@ -50,7 +50,7 @@ it('can update database on configured filesystem disk', function () {
     expect($cachePath)->toBeFile();
 });
 
-it('can cache database when disk upload closes the source stream', function () {
+it('uploads database contents as string to configured disk for broad cloud storage compatibility', function () {
     config([
         'location.maxmind.local.disk' => 's3',
     ]);
@@ -74,15 +74,12 @@ it('can cache database when disk upload closes the source stream', function () {
 
     $disk = m::mock();
 
+    // Disk must receive the file contents as a string (not a stream) so that
+    // Flysystem uses write() instead of writeStream(), which is required for
+    // S3-compatible backends such as Google Cloud Storage.
     $disk->shouldReceive('put')
         ->once()
-        ->with('maxmind/GeoLite2-City.mmdb', m::on(function ($stream) {
-            if (is_resource($stream)) {
-                fclose($stream);
-            }
-
-            return true;
-        }))
+        ->with('maxmind/GeoLite2-City.mmdb', 'test-mmdb-content')
         ->andReturn(true);
 
     Storage::shouldReceive('disk')

@@ -81,14 +81,22 @@ class MaxMind extends Driver implements Updatable
     protected function putDatabaseContentsFromFile(string $path): void
     {
         if ($this->getDatabaseDisk()) {
-            $diskStream = $this->openReadStream($path, 'write to configured disk');
+            // Use string contents instead of a stream so that Flysystem routes
+            // through write() rather than writeStream(). Some S3-compatible
+            // backends (e.g. Google Cloud Storage) can fail silently on
+            // stream-based uploads (writeStream), while string-based uploads
+            // work reliably across all providers.
+            $contents = file_get_contents($path);
+
+            throw_if(
+                $contents === false,
+                new RuntimeException(sprintf('Unable to read MaxMind database file [%s] for upload.', $path))
+            );
 
             $stored = Storage::disk($this->getDatabaseDisk())
-                ->put($this->getDatabaseDiskPath(), $diskStream);
+                ->put($this->getDatabaseDiskPath(), $contents);
 
-            if (is_resource($diskStream)) {
-                fclose($diskStream);
-            }
+            unset($contents);
 
             throw_if(
                 $stored === false,
