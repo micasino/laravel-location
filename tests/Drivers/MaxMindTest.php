@@ -35,7 +35,7 @@ it('can update database on configured filesystem disk', function () {
     ]);
 
     Http::fake([
-        'http://example.com' => Http::response(file_get_contents(__DIR__.'/fixtures/maxmind.tar.gz')),
+        'http://example.com' => Http::response(file_get_contents(__DIR__.'/../fixtures/maxmind.tar.gz')),
     ]);
 
     $this->artisan(Update::class)->assertSuccessful();
@@ -185,7 +185,7 @@ it('can reuse cached local database when using configured filesystem disk', func
 
     Storage::disk('local')->put(
         'maxmind/GeoLite2-City-Test.mmdb',
-        file_get_contents(__DIR__.'/fixtures/GeoLite2-City-Test.mmdb')
+        file_get_contents(__DIR__.'/../fixtures/GeoLite2-City-Test.mmdb')
     );
 
     $first = Location::get('2.125.160.216');
