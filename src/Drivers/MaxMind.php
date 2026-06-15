@@ -214,29 +214,32 @@ class MaxMind extends Driver implements Updatable
      */
     protected function process(Request $request): Fluent|false
     {
-        return rescue(function () use ($request) {
-            $location = $this->fetchLocation($request->getIp());
+        return rescue(
+            function () use ($request) {
+                $location = $this->fetchLocation($request->getIp());
 
-            if ($location instanceof City) {
+                if ($location instanceof City) {
+                    return new Fluent([
+                        'country' => $location->country->name,
+                        'country_code' => $location->country->isoCode,
+                        'city' => $location->city->name,
+                        'regionCode' => $location->mostSpecificSubdivision->isoCode,
+                        'regionName' => $location->mostSpecificSubdivision->name,
+                        'postal' => $location->postal->code,
+                        'timezone' => $location->location->timeZone,
+                        'latitude' => (string) $location->location->latitude,
+                        'longitude' => (string) $location->location->longitude,
+                        'metro_code' => (string) $location->location->metroCode,
+                    ]);
+                }
+
                 return new Fluent([
                     'country' => $location->country->name,
                     'country_code' => $location->country->isoCode,
-                    'city' => $location->city->name,
-                    'regionCode' => $location->mostSpecificSubdivision->isoCode,
-                    'regionName' => $location->mostSpecificSubdivision->name,
-                    'postal' => $location->postal->code,
-                    'timezone' => $location->location->timeZone,
-                    'latitude' => (string) $location->location->latitude,
-                    'longitude' => (string) $location->location->longitude,
-                    'metro_code' => (string) $location->location->metroCode,
                 ]);
-            }
-
-            return new Fluent([
-                'country' => $location->country->name,
-                'country_code' => $location->country->isoCode,
-            ]);
-        }, false, false);
+            },
+            false
+        );
     }
 
     /**
