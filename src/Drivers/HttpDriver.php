@@ -30,18 +30,17 @@ abstract class HttpDriver extends Driver
 
     /**
      * Attempt to fetch and process the location data from the driver.
+     *
+     * @throws \Illuminate\Http\Client\ConnectionException
+     * @throws \Illuminate\Http\Client\RequestException
      */
-    public function process(Request $request): Fluent|false
+    public function process(Request $request): Fluent
     {
-        return rescue(function () use ($request) {
-            $response = $this->http()->acceptJson()->get(
-                $this->url($request->getIp())
-            );
+        $response = $this->http()->acceptJson()->get(
+            $this->url($request->getIp())
+        );
 
-            throw_if($response->failed());
-
-            return new Fluent($response->json());
-        }, false, false);
+        return new Fluent($response->throw()->json());
     }
 
     /**

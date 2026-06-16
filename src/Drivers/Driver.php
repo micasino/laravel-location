@@ -2,9 +2,11 @@
 
 namespace Stevebauman\Location\Drivers;
 
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Fluent;
 use Stevebauman\Location\Position;
 use Stevebauman\Location\Request;
+use Throwable;
 
 abstract class Driver
 {
@@ -30,22 +32,48 @@ abstract class Driver
      */
     public function get(Request $request): Position|false
     {
-        $data = $this->process($request);
+        try {
+            $data = $this->process($request);
 
-        $position = $this->makePosition();
+            // Here we will ensure the location's data we received isn't empty.
+            // Some IP location providers will return empty JSON. We want
+            // to avoid this, so we can call the next fallback driver.
+            if (! $this->isEmpty($data)) {
+                $position = $this->hydrate(
+                    $this->makePosition(),
+                    $data
+                );
 
-        // Here we will ensure the location's data we received isn't empty.
-        // Some IP location providers will return empty JSON. We want
-        // to avoid this, so we can call the next fallback driver.
-        if ($data instanceof Fluent && ! $this->isEmpty($data)) {
-            $position = $this->hydrate($position, $data);
+                $position->ip = $request->getIp();
+                $position->driver = get_class($this);
 
-            $position->ip = $request->getIp();
-            $position->driver = get_class($this);
-        }
-
-        if (! $position->isEmpty()) {
-            return $position;
+                if (! $position->isEmpty()) {
+                    return $position;
+                } else {
+                    Log::warning(
+                        'Location position is empty.',
+                        ['position' => $position]
+                    );
+                }
+            } else {
+                Log::warning(
+                    'Location data is empty.',
+                    [
+                        'driver' => get_class($this),
+                        'ip' => $request->getIp(),
+                        'data' => $data->getAttributes(),
+                    ]
+                );
+            }
+        } catch (Throwable $e) {
+            Log::error(
+                'Failed to retrieve location data.',
+                [
+                    'driver' => get_class($this),
+                    'ip' => $request->getIp(),
+                    'exception' => $e,
+                ]
+            );
         }
 
         return $this->fallback ? $this->fallback->get($request) : false;
@@ -53,8 +81,10 @@ abstract class Driver
 
     /**
      * Attempt to fetch and process the location data from the driver.
+     *
+     * @throws Throwable
      */
-    abstract protected function process(Request $request): Fluent|false;
+    abstract protected function process(Request $request): Fluent;
 
     /**
      * Hydrate the Position object with the given location data.
