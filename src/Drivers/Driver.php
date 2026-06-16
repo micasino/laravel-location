@@ -49,7 +49,21 @@ abstract class Driver
 
                 if (! $position->isEmpty()) {
                     return $position;
+                } else {
+                    Log::warning(
+                        'Location position is empty.',
+                        ['position' => $position]
+                    );
                 }
+            } else {
+                Log::warning(
+                    'Location data is empty.',
+                    [
+                        'driver' => get_class($this),
+                        'ip' => $request->getIp(),
+                        'data' => $data->getAttributes(),
+                    ]
+                );
             }
         } catch (Throwable $e) {
             Log::error(
