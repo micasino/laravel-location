@@ -11,14 +11,14 @@ class Cloudflare extends Driver
     /**
      * {@inheritDoc}
      */
-    protected function process(Request $request): Fluent|false
+    protected function process(Request $request): Fluent
     {
         // This is available both from CloudFlare's dashboard and Managed Transforms.
         $countryCode = $request->getHeader('cf-ipcountry');
 
         // Unknown and Tor values
         if (! $countryCode || in_array($countryCode, ['XX', 'T1'])) {
-            return false;
+            return new Fluent;
         }
 
         // These are only available if the relevant Managed Transform is configured.

@@ -3,7 +3,9 @@
 namespace Stevebauman\Location\Drivers;
 
 use Closure;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\PendingRequest;
+use Illuminate\Http\Client\RequestException;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Fluent;
 use Stevebauman\Location\Request;
@@ -31,8 +33,8 @@ abstract class HttpDriver extends Driver
     /**
      * Attempt to fetch and process the location data from the driver.
      *
-     * @throws \Illuminate\Http\Client\ConnectionException
-     * @throws \Illuminate\Http\Client\RequestException
+     * @throws ConnectionException
+     * @throws RequestException
      */
     public function process(Request $request): Fluent
     {

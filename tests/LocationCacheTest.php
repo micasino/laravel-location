@@ -2,6 +2,7 @@
 
 namespace Stevebauman\Location\Tests;
 
+use Illuminate\Cache\Repository;
 use Illuminate\Support\Facades\Cache;
 use Mockery as m;
 use Stevebauman\Location\Drivers\Driver;
@@ -22,7 +23,7 @@ beforeEach(function () {
 /**
  * Get the configured cache store.
  */
-function cacheStore(): \Illuminate\Cache\Repository
+function cacheStore(): Repository
 {
     return Cache::store(config('location.cache.store'));
 }

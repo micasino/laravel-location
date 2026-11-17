@@ -141,7 +141,7 @@ class LocationManager
      */
     protected function cacheKey(string $ip): string
     {
-        return config('location.cache.prefix', 'location') . '_' . $ip;
+        return config('location.cache.prefix', 'location').'_'.$ip;
     }
 
     /**
