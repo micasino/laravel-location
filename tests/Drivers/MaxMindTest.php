@@ -23,7 +23,7 @@ it('can update database', function () {
 
     $this->artisan(Update::class)->assertSuccessful();
 
-    expect(database_path('maxmind/GeoLite2-City.mmdb'))->toBeFile();
+    expect(config('location.maxmind.local.path'))->toBeFile();
 });
 
 it('can update database on configured filesystem disk', function () {
